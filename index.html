@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Misskey Word Cloud Generator</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-background">
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="site-header">
+      <div class="logo-wrapper">
+        <div class="logo-icon">
+          <i data-lucide="cloud"></i>
+        </div>
+        <div class="logo-text">
+          <h1>Misskey WordCloud</h1>
+          <span class="badge">Generator</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- STEP 1: Input Form -->
+      <section id="input-section" class="card glass-card">
+        <form id="generator-form" class="generator-form" onsubmit="return false;">
+          <!-- Misskey Host (Conditional) -->
+          <div class="form-group" id="host-group">
+            <label for="server-host" class="form-label">
+              サーバーホスト
+            </label>
+            <div class="input-wrapper">
+              <span class="input-prefix">https://</span>
+              <input type="text" id="server-host" class="form-input" placeholder="misskey.io" value="misskey.io">
+            </div>
+          </div>
+
+          <!-- Username Input -->
+          <div class="form-group" id="username-group">
+            <label for="username-input" class="form-label">
+              ユーザー名
+              <span class="required-mark">*</span>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-prefix">@</span>
+              <input type="text" id="username-input" class="form-input" placeholder="username" required autofocus>
+            </div>
+          </div>
+
+          <!-- Customization Options Accordion -->
+          <details class="options-accordion">
+            <summary class="accordion-header">
+              <div class="accordion-title">
+                <i data-lucide="sliders"></i>
+                <span>ビジュアル詳細カスタマイズ</span>
+              </div>
+              <span class="accordion-tag">カラー・形状など</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </summary>
+
+            <div class="accordion-body">
+              <div class="options-grid">
+                <!-- Color Theme -->
+                <div class="option-item">
+                  <label class="form-label" for="color-theme">カラーパレット</label>
+                  <select id="color-theme" class="form-select">
+                    <option value="cyberpunk">サイバーネオン (Neon Cyber)</option>
+                    <option value="misskey" selected>Misskeyライム (Fresh Lime)</option>
+                    <option value="sunset">サンセットグロー (Sunset Glow)</option>
+                    <option value="ocean">オーシャンブルー (Deep Ocean)</option>
+                    <option value="aurora">オーロラ (Aurora Pastel)</option>
+                    <option value="monochrome">モノトーン (Monochrome Dark)</option>
+                  </select>
+                </div>
+
+                <!-- Background Color -->
+                <div class="option-item">
+                  <label class="form-label" for="bg-style">背景デザイン</label>
+                  <select id="bg-style" class="form-select">
+                    <option value="dark" selected>ディープダーク (Dark Slate)</option>
+                    <option value="gradient">ネオングラデーション (Gradient)</option>
+                    <option value="midnight">ミッドナイトブラック (Pitch Black)</option>
+                    <option value="light">クリーンホワイト (Light)</option>
+                  </select>
+                </div>
+
+                <!-- Word Count -->
+                <div class="option-item">
+                  <div class="range-header">
+                    <label class="form-label" for="word-count">最大単語数</label>
+                    <span id="word-count-val" class="range-val">50語</span>
+                  </div>
+                  <input type="range" id="word-count" min="20" max="100" step="5" value="50" class="form-range">
+                </div>
+
+                <!-- Text Rotation -->
+                <div class="option-item">
+                  <label class="form-label" for="rotation-mode">単語の角度</label>
+                  <select id="rotation-mode" class="form-select">
+                    <option value="mixed" selected>水平 ＆ 垂直ミックス</option>
+                    <option value="horizontal">すべて水平 (読みやすさ重視)</option>
+                    <option value="dynamic">多彩な角度 (ダイナミック)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- Submit Button -->
+          <div class="form-actions">
+            <button type="submit" id="generate-btn" class="btn btn-primary btn-large">
+              <span class="btn-glow"></span>
+              <i data-lucide="sparkles"></i>
+              <span>ワードクラウドを作成する</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- STEP 2: Loading State (Hidden by default) -->
+      <section id="loading-section" class="card glass-card hidden">
+        <div class="loading-container">
+          <div class="loader-visual">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring delay-1"></div>
+            <div class="spinner-core">
+              <i data-lucide="cloud-lightning" class="spinner-icon"></i>
+            </div>
+          </div>
+
+          <h3 id="loading-title" class="loading-title">投稿を取得中...</h3>
+
+          <!-- Progress Bar -->
+          <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar" style="width: 15%;"></div>
+          </div>
+
+          <div class="loading-steps">
+            <div class="loading-step active" id="step-fetch">
+              <div class="step-dot"></div>
+              <span>投稿取得</span>
+            </div>
+            <div class="loading-step" id="step-analyze">
+              <div class="step-dot"></div>
+              <span>形態素・単語抽出</span>
+            </div>
+            <div class="loading-step" id="step-render">
+              <div class="step-dot"></div>
+              <span>クラウド配置</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3: Results Section (Hidden by default) -->
+      <section id="results-section" class="card glass-card hidden">
+        <div class="card-header result-header">
+          <div class="result-title-group">
+            <span class="step-badge success">COMPLETED</span>
+            <h2 id="result-user-title">@username のワードクラウド</h2>
+          </div>
+          <div class="result-meta">
+            <span id="result-stats" class="stats-badge">
+              <i data-lucide="bar-chart-2"></i>
+              <span id="stats-text">分析投稿: 120件 / 抽出語: 48語</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="cloud-display-wrapper">
+          <div class="canvas-card" id="canvas-card">
+            <canvas id="wordcloud-canvas" width="900" height="540"></canvas>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="actions-toolbar">
+          <div class="primary-actions">
+            <!-- Download Button -->
+            <button type="button" id="download-btn" class="btn btn-action btn-download">
+              <i data-lucide="download"></i>
+              <span>画像を保存 (PNG)</span>
+            </button>
+
+            <!-- Misskey Share Button -->
+            <a id="misskey-share-link" href="#" target="_blank" rel="noopener noreferrer"
+              class="btn btn-action btn-misskey">
+              <span class="btn-icon">🌱</span>
+              <span>Misskeyで投稿する</span>
+            </a>
+          </div>
+
+          <!-- Secondary Actions -->
+          <div class="secondary-actions">
+            <button type="button" id="copy-text-btn" class="btn btn-subtle" title="共有用テキストをコピー">
+              <i data-lucide="copy"></i>
+              <span>テキストをコピー</span>
+            </button>
+            <button type="button" id="regenerate-btn" class="btn btn-subtle" title="配置を再シャッフル">
+              <i data-lucide="refresh-cw"></i>
+              <span>再配置</span>
+            </button>
+            <button type="button" id="back-btn" class="btn btn-subtle" title="最初に戻る">
+              <i data-lucide="arrow-left"></i>
+              <span>別の条件で作成</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Top Keywords List -->
+        <div class="keywords-panel">
+          <div class="keywords-header">
+            <h4><i data-lucide="hash"></i> 頻出キーワード TOP 15</h4>
+          </div>
+          <div id="keywords-list" class="keywords-tags">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <p>Misskey WordCloud Generator &copy; 2026 &mdash; Powered by <a href="https://misskeyshare.link/" target="_blank"
+          rel="noopener noreferrer">MisskeyShare</a></p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden">
+    <i data-lucide="check-circle" class="toast-icon"></i>
+    <span id="toast-message">完了しました</span>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/wordcloud.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
