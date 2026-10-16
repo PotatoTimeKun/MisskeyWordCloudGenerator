@@ -80,8 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     // ステップインジケーターのリセット
-    const scopeDesc = includeHome ? "" : " (publicのみ)";
-    updateLoadingStep("fetch", 15, `@${username} のデータを取得中${scopeDesc}...`);
+    updateLoadingStep("fetch", 15, `@${username} のデータを取得中...`);
 
     try {
       // Misskey API呼び出し（ノート取得 ＆ カスタム絵文字解析 ＆ 画像プリロード）
@@ -149,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("PNG画像をダウンロードしました！");
     } catch (err) {
       console.error("ダウンロードエラー:", err);
-      alert("画像のダウンロードに失敗しました。CORS保護によりCanvasが制限されている可能性があります。");
+      alert("画像のダウンロードに失敗しました。");
     }
   });
 
@@ -202,8 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // タイトルと統計表示
     const fullHandle = `@${username}@${serverHost}`;
     resultUserTitle.textContent = `${userDisplayName ? `${userDisplayName} (${fullHandle})` : fullHandle} のワードクラウド`;
-    const scopeLabel = includeHome ? "ホーム含む" : "publicのみ";
-    statsText.textContent = `取得ノート: ${totalPosts}件 (${scopeLabel}) / 抽出単語・絵文字: ${words.length}語`;
+    statsText.textContent = `取得ノート: ${totalPosts}件`;
 
     // Canvas描画パラメータ
     const paletteName = "misskey";
@@ -263,7 +261,6 @@ document.addEventListener("DOMContentLoaded", () => {
           subtitle: `${currentResult.totalPosts} notes analyzed`
         });
         renderer.highlightWord(item.word);
-        showToast(`「${item.word}」を強調表示しました`);
       });
 
       keywordsList.appendChild(tag);
