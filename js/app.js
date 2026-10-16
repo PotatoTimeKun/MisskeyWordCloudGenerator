@@ -12,10 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("generator-form");
   const usernameInput = document.getElementById("username-input");
   const serverHostInput = document.getElementById("server-host");
+  const includeHomeCheck = document.getElementById("include-home-check");
 
   const wordCountSlider = document.getElementById("word-count");
   const wordCountVal = document.getElementById("word-count-val");
-  const colorThemeSelect = document.getElementById("color-theme");
   const bgStyleSelect = document.getElementById("bg-style");
   const rotationModeSelect = document.getElementById("rotation-mode");
 
@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Results UI
   const resultUserTitle = document.getElementById("result-user-title");
   const statsText = document.getElementById("stats-text");
+  const canvasCard = document.getElementById("canvas-card");
   const canvas = document.getElementById("wordcloud-canvas");
   const downloadBtn = document.getElementById("download-btn");
   const misskeyShareLink = document.getElementById("misskey-share-link");
@@ -64,6 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const username = usernameInput.value.trim();
     const serverHost = serverHostInput.value.trim() || "misskey.io";
     const maxWords = parseInt(wordCountSlider.value, 10);
+    const includeHome = includeHomeCheck ? includeHomeCheck.checked : true;
 
     if (!username) {
       alert("ユーザー名を入力してください。");
@@ -78,7 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     // ステップインジケーターのリセット
-    updateLoadingStep("fetch", 15, `@${username} のデータを取得中...`);
+    const scopeDesc = includeHome ? "" : " (publicのみ)";
+    updateLoadingStep("fetch", 15, `@${username} のデータを取得中${scopeDesc}...`);
 
     try {
       // Misskey API呼び出し（ノート取得 ＆ カスタム絵文字解析 ＆ 画像プリロード）
@@ -86,6 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
         username,
         serverHost,
         maxWords,
+        includeHome,
         onProgress: ({ step, progress, message }) => {
           updateLoadingStep(step, progress, message);
         }
@@ -161,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // オプション（パレット・背景・回転）変更時に即座に再描画
-  [colorThemeSelect, bgStyleSelect, rotationModeSelect].forEach(select => {
+  [bgStyleSelect, rotationModeSelect].forEach(select => {
     select.addEventListener("change", () => {
       if (currentResult && !resultsSection.classList.contains("hidden")) {
         renderCurrentResult();
@@ -193,17 +197,22 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCurrentResult() {
     if (!currentResult) return;
 
-    const { username, userDisplayName, serverHost, totalPosts, words } = currentResult;
+    const { username, userDisplayName, serverHost, totalPosts, words, includeHome } = currentResult;
 
     // タイトルと統計表示
     const fullHandle = `@${username}@${serverHost}`;
     resultUserTitle.textContent = `${userDisplayName ? `${userDisplayName} (${fullHandle})` : fullHandle} のワードクラウド`;
-    statsText.textContent = `取得ノート: ${totalPosts}件 / 抽出単語・絵文字: ${words.length}語`;
+    const scopeLabel = includeHome ? "ホーム含む" : "publicのみ";
+    statsText.textContent = `取得ノート: ${totalPosts}件 (${scopeLabel}) / 抽出単語・絵文字: ${words.length}語`;
 
     // Canvas描画パラメータ
-    const paletteName = colorThemeSelect.value;
+    const paletteName = "misskey";
     const bgStyle = bgStyleSelect.value;
     const rotationMode = rotationModeSelect.value;
+
+    if (canvasCard) {
+      canvasCard.classList.toggle("light-bg", bgStyle === "light");
+    }
 
     renderer.render({
       words,
@@ -247,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tag.addEventListener("click", () => {
         renderer.render({
           words: currentResult.words,
-          paletteName: colorThemeSelect.value,
+          paletteName: "misskey",
           bgStyle: bgStyleSelect.value,
           rotationMode: rotationModeSelect.value,
           title: `@${currentResult.username}@${currentResult.serverHost} Word Cloud`,

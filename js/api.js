@@ -86,16 +86,24 @@ async function fetchServerEmojisMap(host) {
 
 /**
  * ユーザーのノートをAPIから取得（最大200件）
+ * @param {string} host - Misskeyサーバーホスト
+ * @param {string} userId - 対象ユーザーID
+ * @param {number} targetCount - 取得目標件数
+ * @param {Function} onProgress - 進捗コールバック
+ * @param {boolean} includeHome - ホーム投稿を含めるかどうか（falseなら visibility === "public" のみ）
  */
-async function fetchUserNotes(host, userId, targetCount = 200, onProgress = () => {}) {
+async function fetchUserNotes(host, userId, targetCount = 200, onProgress = () => {}, includeHome = true) {
   const allNotes = [];
   let untilId = null;
+  let fetchAttempts = 0;
+  const maxAttempts = 12; // 過剰なAPIコール防止（ホーム除外時に最大1200件まで探索）
 
-  while (allNotes.length < targetCount) {
-    const fetchLimit = Math.min(100, targetCount - allNotes.length);
+  while (allNotes.length < targetCount && fetchAttempts < maxAttempts) {
+    fetchAttempts++;
+    const fetchLimit = Math.min(100, (targetCount - allNotes.length) * 2); // 余裕を持って取得
     const body = {
       userId,
-      limit: fetchLimit,
+      limit: Math.max(20, Math.min(100, fetchLimit)),
       includeReplies: true,
       includeMyRenotes: false
     };
@@ -108,22 +116,28 @@ async function fetchUserNotes(host, userId, targetCount = 200, onProgress = () =
       break;
     }
 
-    allNotes.push(...notes);
+    // visibilityフィルタ: includeHomeがfalseなら "public" のみ抽出
+    const filteredNotes = includeHome
+      ? notes
+      : notes.filter(n => n.visibility === "public");
+
+    allNotes.push(...filteredNotes);
     untilId = notes[notes.length - 1].id;
 
     onProgress({
       step: "fetch",
       progress: Math.min(45, 20 + Math.round((allNotes.length / targetCount) * 25)),
-      message: `ノートを取得中... (${allNotes.length}件)`
+      message: `ノートを取得中... (${allNotes.length}件${!includeHome ? " / publicのみ" : ""})`
     });
 
-    if (notes.length < fetchLimit) {
-      // これ以上ノートがない
+    if (notes.length < body.limit) {
+      // ユーザーの過去ノートが尽きた場合
       break;
     }
   }
 
-  return allNotes;
+  // targetCount件までに調整
+  return allNotes.slice(0, targetCount);
 }
 
 /**
@@ -271,13 +285,15 @@ async function preloadEmojiImages(words) {
  * @param {string} params.username - ユーザー名
  * @param {string} params.serverHost - Misskeyサーバーホスト（例: 'sushi.ski', 'misskey.io'）
  * @param {number} params.maxWords - 最大単語数
+ * @param {boolean} params.includeHome - ホーム投稿を含めるかどうか（falseなら visibility === "public" のみ）
  * @param {Function} params.onProgress - 進捗コールバック
- * @returns {Promise<{ username: string, serverHost: string, totalPosts: number, words: Array }>}
+ * @returns {Promise<{ username: string, serverHost: string, totalPosts: number, words: Array, includeHome: boolean }>}
  */
 async function fetchUserPostsAndAnalyze({
   username = "",
   serverHost = "misskey.io",
   maxWords = 50,
+  includeHome = true,
   onProgress = () => {}
 }) {
   const host = normalizeHost(serverHost);
@@ -315,10 +331,11 @@ async function fetchUserPostsAndAnalyze({
     message: `@${cleanUsername} の直近ノートを取得中...`
   });
 
-  const notes = await fetchUserNotes(host, user.id, 200, onProgress);
+  const notes = await fetchUserNotes(host, user.id, 200, onProgress, includeHome);
 
   if (notes.length === 0) {
-    throw new Error(`ユーザー @${cleanUsername} の公開ノートが見つかりませんでした。`);
+    const scopeMsg = includeHome ? "公開ノート（パブリック・ホーム）" : "公開ノート（パブリックのみ）";
+    throw new Error(`ユーザー @${cleanUsername} の${scopeMsg}が見つかりませんでした。`);
   }
 
   // 3. 形態素・単語抽出 ＆ カスタム絵文字の検出
@@ -367,7 +384,8 @@ async function fetchUserPostsAndAnalyze({
     userDisplayName: user.name || cleanUsername,
     serverHost: host,
     totalPosts: notes.length,
-    words: topWords
+    words: topWords,
+    includeHome
   };
 }
 

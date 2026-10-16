@@ -7,51 +7,66 @@
  */
 
 const PALETTES = {
-  misskey: [
-    "#86b300", "#9fe200", "#a3e635", "#bef264", "#00e5ff", "#ffffff", "#4ade80", "#22c55e"
-  ],
-  cyberpunk: [
-    "#00e5ff", "#ff007f", "#ffe600", "#a855f7", "#ffffff", "#38bdf8", "#ec4899"
-  ],
-  sunset: [
-    "#ff6b6b", "#ffa502", "#ff4757", "#ff7f50", "#ffd32a", "#ff9ff3", "#ffffff"
-  ],
-  ocean: [
-    "#00d2d3", "#0abde3", "#54a0ff", "#48dbfb", "#ffffff", "#5f27cd", "#1dd1a1"
-  ],
-  aurora: [
-    "#a8ff78", "#78ffd6", "#d980fa", "#fda7df", "#ffffff", "#b388ff", "#80d8ff"
-  ],
-  monochrome: [
-    "#ffffff", "#f1f2f6", "#ced6e0", "#dfe4ea", "#a4b0be", "#747d8c"
-  ]
+  // 黒背景用パレット（黒背景でハッキリ見える明るい高コントラスト色）
+  dark: {
+    misskey: [
+      "#a3e635", "#bef264", "#ffffff", "#4ade80", "#22d3ee", "#86b300", "#e2e8f0"
+    ],
+    colorful: [
+      "#38bdf8", "#f472b6", "#facc15", "#c084fc", "#4ade80", "#ffffff", "#fb923c"
+    ],
+    monochrome: [
+      "#ffffff", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8"
+    ],
+    ocean: [
+      "#38bdf8", "#22d3ee", "#818cf8", "#67e8f9", "#ffffff", "#0284c7"
+    ],
+    sunset: [
+      "#fb7185", "#f97316", "#facc15", "#fda4af", "#ffffff", "#fb923c"
+    ]
+  },
+  // 白背景用パレット（白背景でハッキリ見える濃い高コントラスト色、淡色・白色は不使用）
+  light: {
+    misskey: [
+      "#15803d", "#166534", "#3f6212", "#0f172a", "#1e3a8a", "#14532d", "#334155"
+    ],
+    colorful: [
+      "#1d4ed8", "#be185d", "#b45309", "#6b21a8", "#047857", "#0f172a", "#c2410c"
+    ],
+    monochrome: [
+      "#0f172a", "#1e293b", "#334155", "#475569", "#111827"
+    ],
+    ocean: [
+      "#0369a1", "#1e40af", "#0e7490", "#1d4ed8", "#0f172a", "#312e81"
+    ],
+    sunset: [
+      "#be123c", "#c2410c", "#b45309", "#9f1239", "#0f172a", "#831843"
+    ]
+  }
 };
 
+/**
+ * テーマ名と背景種別から最適なカラーパレット配列を取得
+ */
+function getThemePalette(paletteName, isLight) {
+  const group = isLight ? PALETTES.light : PALETTES.dark;
+  const aliasMap = {
+    cyberpunk: "colorful",
+    aurora: "ocean"
+  };
+  const key = aliasMap[paletteName] || paletteName;
+  return group[key] || group.misskey || Object.values(group)[0];
+}
+
 const BACKGROUNDS = {
+  // 黒背景 (Black)
   dark: (ctx, w, h) => {
-    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-    bgGrad.addColorStop(0, "#0b0f19");
-    bgGrad.addColorStop(1, "#111827");
-    ctx.fillStyle = bgGrad;
+    ctx.fillStyle = "#090d16";
     ctx.fillRect(0, 0, w, h);
   },
-  gradient: (ctx, w, h) => {
-    const grad = ctx.createRadialGradient(w / 2, h / 2, w * 0.1, w / 2, h / 2, w * 0.7);
-    grad.addColorStop(0, "#1e1b4b");
-    grad.addColorStop(0.5, "#0f172a");
-    grad.addColorStop(1, "#020617");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-  },
-  midnight: (ctx, w, h) => {
-    ctx.fillStyle = "#030712";
-    ctx.fillRect(0, 0, w, h);
-  },
+  // 白背景 (White)
   light: (ctx, w, h) => {
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, "#f8fafc");
-    grad.addColorStop(1, "#e2e8f0");
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
   }
 };
@@ -61,6 +76,7 @@ class WordCloudRenderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.placedWords = [];
+    this.lastBgStyle = "dark";
   }
 
   /**
@@ -101,17 +117,19 @@ class WordCloudRenderer {
     title = "",
     subtitle = ""
   }) {
+    this.lastBgStyle = bgStyle;
     const canvas = this.canvas;
     const ctx = this.ctx;
     const width = canvas.width;
     const height = canvas.height;
 
-    // 1. 背景描画
-    const bgRenderer = BACKGROUNDS[bgStyle] || BACKGROUNDS.dark;
+    // 1. 背景描画（dark または light）
+    const isLight = bgStyle === "light";
+    const bgRenderer = isLight ? BACKGROUNDS.light : BACKGROUNDS.dark;
     bgRenderer(ctx, width, height);
 
     // ドットパターン装飾
-    ctx.fillStyle = bgStyle === "light" ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.03)";
+    ctx.fillStyle = isLight ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.03)";
     for (let x = 20; x < width; x += 40) {
       for (let y = 20; y < height; y += 40) {
         ctx.beginPath();
@@ -122,8 +140,8 @@ class WordCloudRenderer {
 
     if (!words || words.length === 0) return;
 
-    // カラーパレット取得
-    const colors = PALETTES[paletteName] || PALETTES.misskey;
+    // カラーパレット取得（背景色に合わせて見やすいパレットを取得）
+    const colors = getThemePalette(paletteName, isLight);
 
     // 重み正規化
     const maxWeight = Math.max(...words.map(w => w.weight), 1);
@@ -238,15 +256,27 @@ class WordCloudRenderer {
         // ===== カスタム絵文字画像の描画 =====
         const half = pw.size / 2;
 
-        // 背景に柔らかなグロー（ネオン効果）
         ctx.save();
-        ctx.shadowColor = pw.color;
-        ctx.shadowBlur = pw.size > 40 ? 14 : 6;
-        // 少し背景に丸みのあるハイライトを描く
-        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-        ctx.beginPath();
-        ctx.roundRect(-half - 2, -half - 2, pw.size + 4, pw.size + 4, 8);
-        ctx.fill();
+        if (isLight) {
+          // 白背景：透過・薄色絵文字が埋もれないよう、控えめな背景と繊細な枠線
+          ctx.shadowColor = "rgba(0, 0, 0, 0.08)";
+          ctx.shadowBlur = 4;
+          ctx.fillStyle = "rgba(0, 0, 0, 0.04)";
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.08)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(-half - 3, -half - 3, pw.size + 6, pw.size + 6, 8);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          // 黒背景：背景に柔らかなネオングロー
+          ctx.shadowColor = pw.color;
+          ctx.shadowBlur = pw.size > 40 ? 14 : 6;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+          ctx.beginPath();
+          ctx.roundRect(-half - 2, -half - 2, pw.size + 4, pw.size + 4, 8);
+          ctx.fill();
+        }
         ctx.restore();
 
         // 画像を描画
@@ -258,15 +288,26 @@ class WordCloudRenderer {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        ctx.shadowColor = pw.color;
-        ctx.shadowBlur = pw.fontSize > 35 ? 12 : 4;
-        ctx.fillStyle = pw.color;
-        ctx.fillText(pw.word, 0, 0);
-
-        if (pw.fontSize > 45) {
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        if (isLight) {
+          // 白背景：くっきりと文字の輪郭が見えるよう、滲みを作らず高コントラスト描画
+          ctx.shadowColor = "rgba(0, 0, 0, 0.12)";
+          ctx.shadowBlur = 2;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 1;
+          ctx.fillStyle = pw.color;
           ctx.fillText(pw.word, 0, 0);
+        } else {
+          // 黒背景：発光感のあるネオングロー
+          ctx.shadowColor = pw.color;
+          ctx.shadowBlur = pw.fontSize > 35 ? 12 : 4;
+          ctx.fillStyle = pw.color;
+          ctx.fillText(pw.word, 0, 0);
+
+          if (pw.fontSize > 45) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+            ctx.fillText(pw.word, 0, 0);
+          }
         }
       }
 
@@ -284,8 +325,8 @@ class WordCloudRenderer {
     ctx.save();
     const isLight = bgStyle === "light";
     const textPrimary = isLight ? "#0f172a" : "#ffffff";
-    const textMuted = isLight ? "#64748b" : "rgba(255, 255, 255, 0.6)";
-    const accentColor = "#86b300";
+    const textMuted = isLight ? "#475569" : "rgba(255, 255, 255, 0.65)";
+    const accentColor = isLight ? "#15803d" : "#a3e635";
 
     // 上部タイトルバー
     if (title) {
@@ -301,9 +342,6 @@ class WordCloudRenderer {
       ctx.textBaseline = "middle";
       ctx.fillStyle = textPrimary;
       ctx.fillText(title, 52, 32);
-
-      if (subtitle) {
-      }
     }
 
     // 右下の透かしクレジット
@@ -314,7 +352,7 @@ class WordCloudRenderer {
     ctx.fillText("Generated by MisskeyWordCloudGenerator", width - 24, height - 14);
 
     // 外枠の繊細なボーダー
-    ctx.strokeStyle = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+    ctx.strokeStyle = isLight ? "rgba(0, 0, 0, 0.12)" : "rgba(255, 255, 255, 0.1)";
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, width - 2, height - 2);
 
@@ -330,7 +368,8 @@ class WordCloudRenderer {
 
     const ctx = this.ctx;
     ctx.save();
-    ctx.strokeStyle = "#86b300";
+    const isLight = this.lastBgStyle === "light";
+    ctx.strokeStyle = isLight ? "#15803d" : "#86b300";
     ctx.lineWidth = 3;
     ctx.setLineDash([5, 5]);
     ctx.strokeRect(item.box.x - 3, item.box.y - 3, item.box.w + 6, item.box.h + 6);

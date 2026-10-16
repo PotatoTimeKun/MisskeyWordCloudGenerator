@@ -75,6 +75,19 @@
             </div>
           </div>
 
+          <!-- Post Visibility Option -->
+          <div class="form-group" id="visibility-group">
+            <label class="checkbox-control" for="include-home-check">
+              <input type="checkbox" id="include-home-check" class="checkbox-input" checked>
+              <span class="checkbox-box">
+                <i data-lucide="check" class="checkbox-icon"></i>
+              </span>
+              <span class="checkbox-text-group">
+                <span class="checkbox-title">ホーム投稿を含める</span>
+              </span>
+            </label>
+          </div>
+
           <!-- Customization Options Accordion -->
           <details class="options-accordion">
             <summary class="accordion-header">
@@ -88,27 +101,12 @@
 
             <div class="accordion-body">
               <div class="options-grid">
-                <!-- Color Theme -->
+                <!-- Background Color (Black or White) -->
                 <div class="option-item">
-                  <label class="form-label" for="color-theme">カラーパレット</label>
-                  <select id="color-theme" class="form-select">
-                    <option value="cyberpunk">サイバーネオン (Neon Cyber)</option>
-                    <option value="misskey" selected>Misskeyライム (Fresh Lime)</option>
-                    <option value="sunset">サンセットグロー (Sunset Glow)</option>
-                    <option value="ocean">オーシャンブルー (Deep Ocean)</option>
-                    <option value="aurora">オーロラ (Aurora Pastel)</option>
-                    <option value="monochrome">モノトーン (Monochrome Dark)</option>
-                  </select>
-                </div>
-
-                <!-- Background Color -->
-                <div class="option-item">
-                  <label class="form-label" for="bg-style">背景デザイン</label>
+                  <label class="form-label" for="bg-style">背景カラー</label>
                   <select id="bg-style" class="form-select">
-                    <option value="dark" selected>ディープダーク (Dark Slate)</option>
-                    <option value="gradient">ネオングラデーション (Gradient)</option>
-                    <option value="midnight">ミッドナイトブラック (Pitch Black)</option>
-                    <option value="light">クリーンホワイト (Light)</option>
+                    <option value="dark" selected>黒背景 (Black)</option>
+                    <option value="light">白背景 (White)</option>
                   </select>
                 </div>
 
@@ -116,9 +114,9 @@
                 <div class="option-item">
                   <div class="range-header">
                     <label class="form-label" for="word-count">最大単語数</label>
-                    <span id="word-count-val" class="range-val">50語</span>
+                    <span id="word-count-val" class="range-val">70語</span>
                   </div>
-                  <input type="range" id="word-count" min="20" max="100" step="5" value="50" class="form-range">
+                  <input type="range" id="word-count" min="20" max="100" step="5" value="70" class="form-range">
                 </div>
 
                 <!-- Text Rotation -->
